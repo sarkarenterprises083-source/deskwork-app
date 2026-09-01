@@ -16,6 +16,7 @@ export default function Home() {
   // Summarize state
   const [sumText, setSumText] = useState('');
   const [sumLength, setSumLength] = useState('a short paragraph');
+  const [sumFile, setSumFile] = useState(null); // { name, mimeType, data }
 
   // Generate state
   const [genBrief, setGenBrief] = useState('');
@@ -25,6 +26,48 @@ export default function Home() {
   // Extract state
   const [extText, setExtText] = useState('');
   const [extFields, setExtFields] = useState('');
+  const [extFile, setExtFile] = useState(null); // { name, mimeType, data }
+
+  const MAX_FILE_BYTES = 4 * 1024 * 1024; // 4MB, must match the server limit
+
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = () => reject(new Error('Could not read the file.'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleFilePicked(file, setter) {
+    if (!file) return;
+    if (file.size > MAX_FILE_BYTES) {
+      setStatus({ text: 'File is too large. Please use a file under 4MB.', error: true });
+      return;
+    }
+    try {
+      const data = await fileToBase64(file);
+      setter({ name: file.name || 'attachment', mimeType: file.type, data });
+      setStatus({ text: '', error: false });
+    } catch (err) {
+      setStatus({ text: err.message || 'Could not read that file.', error: true });
+    }
+  }
+
+  function handlePaste(e, setter) {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type && item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          handleFilePicked(file, setter);
+          e.preventDefault();
+        }
+        break;
+      }
+    }
+  }
 
   function switchMode(next) {
     setMode(next);
@@ -52,10 +95,17 @@ export default function Home() {
 
     try {
       if (mode === 'summarize') {
-        if (!sumText.trim()) return setStatus({ text: 'Paste some text first.', error: true });
+        if (!sumText.trim() && !sumFile) {
+          return setStatus({ text: 'Paste some text or attach a photo/document first.', error: true });
+        }
         setBusy(true);
         setStatus({ text: 'Reading it over…', error: false });
-        const result = await callApi({ mode: 'summarize', text: sumText, length: sumLength });
+        const result = await callApi({
+          mode: 'summarize',
+          text: sumText,
+          length: sumLength,
+          file: sumFile ? { mimeType: sumFile.mimeType, data: sumFile.data } : undefined,
+        });
         setOutput({ title: 'Summary', kind: 'text', text: result });
       } else if (mode === 'generate') {
         if (!genBrief.trim()) return setStatus({ text: 'Describe what you need first.', error: true });
@@ -64,12 +114,19 @@ export default function Home() {
         const result = await callApi({ mode: 'generate', brief: genBrief, type: genType, tone: genTone });
         setOutput({ title: genType, kind: 'text', text: result });
       } else if (mode === 'extract') {
-        if (!extText.trim()) return setStatus({ text: 'Paste some text first.', error: true });
+        if (!extText.trim() && !extFile) {
+          return setStatus({ text: 'Paste some text or attach a photo/document first.', error: true });
+        }
         const fields = extFields.split(',').map((f) => f.trim()).filter(Boolean);
         if (fields.length === 0) return setStatus({ text: 'List at least one field to extract.', error: true });
         setBusy(true);
         setStatus({ text: 'Sorting into fields…', error: false });
-        const raw = await callApi({ mode: 'extract', text: extText, fields });
+        const raw = await callApi({
+          mode: 'extract',
+          text: extText,
+          fields,
+          file: extFile ? { mimeType: extFile.mimeType, data: extFile.data } : undefined,
+        });
         let rows;
         try {
           const cleaned = raw.replace(/```json|```/g, '').trim();
@@ -129,13 +186,15 @@ export default function Home() {
         {mode === 'summarize' && (
           <div>
             <div className="field">
-              <label htmlFor="sum-text">Paste the text to summarize</label>
+              <label htmlFor="sum-text">Paste text, or attach a photo/document</label>
               <textarea
                 id="sum-text"
-                placeholder="Drop an article, report, or transcript here…"
+                placeholder="Drop an article, report, or transcript here… (or paste a photo)"
                 value={sumText}
                 onChange={(e) => setSumText(e.target.value)}
+                onPaste={(e) => handlePaste(e, setSumFile)}
               />
+              <FileAttach file={sumFile} onPick={(f) => handleFilePicked(f, setSumFile)} onClear={() => setSumFile(null)} idPrefix="sum" />
             </div>
             <div className="row">
               <div className="field">
@@ -191,13 +250,15 @@ export default function Home() {
         {mode === 'extract' && (
           <div>
             <div className="field">
-              <label htmlFor="ext-text">Paste the source text</label>
+              <label htmlFor="ext-text">Paste source text, or attach a photo/document</label>
               <textarea
                 id="ext-text"
-                placeholder="Drop an invoice, listing, email, or contract here…"
+                placeholder="Drop an invoice, listing, email, or contract here… (or paste a photo)"
                 value={extText}
                 onChange={(e) => setExtText(e.target.value)}
+                onPaste={(e) => handlePaste(e, setExtFile)}
               />
+              <FileAttach file={extFile} onPick={(f) => handleFilePicked(f, setExtFile)} onClear={() => setExtFile(null)} idPrefix="ext" />
             </div>
             <div className="field">
               <label htmlFor="ext-fields">Fields to pull out (comma separated)</label>
@@ -235,6 +296,46 @@ export default function Home() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function FileAttach({ file, onPick, onClear, idPrefix }) {
+  return (
+    <div className="attach">
+      {!file ? (
+        <div className="attach-buttons">
+          <label className="attach-btn" htmlFor={`${idPrefix}-camera`}>
+            📷 Take photo
+          </label>
+          <input
+            id={`${idPrefix}-camera`}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            hidden
+            onChange={(e) => onPick(e.target.files && e.target.files[0])}
+          />
+          <label className="attach-btn" htmlFor={`${idPrefix}-file`}>
+            📎 Choose photo or PDF
+          </label>
+          <input
+            id={`${idPrefix}-file`}
+            type="file"
+            accept="image/*,application/pdf"
+            hidden
+            onChange={(e) => onPick(e.target.files && e.target.files[0])}
+          />
+          <span className="attach-hint">or paste an image above</span>
+        </div>
+      ) : (
+        <div className="attach-chip">
+          <span className="attach-chip-name">📎 {file.name}</span>
+          <button type="button" className="attach-chip-x" onClick={onClear} aria-label="Remove attached file">
+            ×
+          </button>
+        </div>
+      )}
     </div>
   );
 }
