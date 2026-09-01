@@ -102,6 +102,27 @@ textarea:focus-visible, input[type=text]:focus-visible{
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
 
+.attach{ margin-top: 10px; padding-left: 62px; }
+@media (max-width: 520px){ .attach{ padding-left:0; } }
+.attach-buttons{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.attach-btn{
+  font-family:'IBM Plex Mono', monospace; font-size:12px;
+  background:var(--accent-soft); border:1px solid var(--rule); border-radius:3px;
+  padding:7px 12px; color:var(--accent); cursor:pointer; display:inline-block;
+}
+.attach-btn:hover{ border-color:var(--accent); }
+.attach-hint{ font-size:11.5px; color:var(--ink-soft); }
+.attach-chip{
+  display:inline-flex; align-items:center; gap:8px;
+  background:var(--accent-soft); border:1px solid var(--rule); border-radius:3px;
+  padding:6px 8px 6px 12px; font-size:12.5px; color:var(--ink);
+}
+.attach-chip-x{
+  background:none; border:none; color:var(--ink-soft); font-size:16px; line-height:1;
+  cursor:pointer; padding:2px 4px;
+}
+.attach-chip-x:hover{ color:var(--stamp); }
+
 .row{ display:flex; gap:18px; flex-wrap:wrap; }
 .row .field{ flex:1; min-width: 180px; }
 
