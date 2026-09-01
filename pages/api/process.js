@@ -17,7 +17,7 @@ const EXTRACT_SYSTEM =
   "no markdown fences, no commentary. If the text describes a single record, return an array " +
   "with one object. If a field cannot be found, use null for its value.";
 
-const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_MODEL = 'gemini-3.6-flash';
 
 function buildRequest(mode, payload) {
   if (mode === 'summarize') {
