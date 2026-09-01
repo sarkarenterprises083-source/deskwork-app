@@ -109,19 +109,3 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    const candidate = data.candidates && data.candidates[0];
-    const text = candidate && candidate.content && candidate.content.parts
-      ? candidate.content.parts.map((p) => p.text || '').join('')
-      : '';
-
-    if (!text) {
-      // Common cause: the response was cut off or blocked by safety settings.
-      const reason = candidate && candidate.finishReason ? ` (finishReason: ${candidate.finishReason})` : '';
-      return res.status(502).json({ error: `Model returned no text content${reason}.` });
-    }
-
-    return res.status(200).json({ result: text });
-  } catch (err) {
-    return res.status(500).json({ error: err.message || 'Unexpected server error.' });
-  }
-}
