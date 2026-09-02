@@ -60,6 +60,10 @@ export const config = {
   },
 };
 
+// Raise the serverless function timeout from Vercel's 10s default to the
+// Hobby-plan max, so large files or long documents have time to process.
+export const maxDuration = 60;
+
 // Max size for an uploaded file, in bytes, before base64 encoding.
 // Kept well under Vercel's request body limit (base64 adds ~33% size).
 const MAX_FILE_BYTES = 4 * 1024 * 1024; // 4MB
