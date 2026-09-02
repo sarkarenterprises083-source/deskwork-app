@@ -178,6 +178,23 @@ button.copy:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; 
 }
 @media (max-width: 520px){ .result-text{ padding-left:0; } }
 
+.refine-row{
+  display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; padding-left:62px;
+}
+@media (max-width: 520px){ .refine-row{ padding-left:0; } }
+.refine-btn{
+  font-family:'IBM Plex Mono', monospace; font-size:11.5px;
+  background:none; border:1px solid var(--rule); border-radius:3px;
+  padding:6px 10px; color:var(--ink-soft); cursor:pointer;
+}
+.refine-btn:hover{ border-color:var(--accent); color:var(--accent); }
+.refine-btn:disabled{ opacity:.5; cursor:default; }
+.refine-lang{
+  font-family:'IBM Plex Mono', monospace; font-size:11.5px;
+  background:var(--accent-soft); border:1px solid var(--rule); border-radius:3px;
+  padding:6px 8px; color:var(--ink); width:auto;
+}
+
 table.extract{
   width:100%; border-collapse:collapse; font-size:13.5px; margin-left:0;
 }
