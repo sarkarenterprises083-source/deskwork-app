@@ -9,8 +9,6 @@ const ACTION_PROMPTS = {
   summarize: 'Summarize the following text concisely.',
   shorten: 'Make the following text shorter while keeping the key meaning.',
   lengthen: 'Expand the following text with more detail and context.',
-  translate_bn: 'Translate the following text into natural, fluent Bengali (Bangla script).',
-  translate_en: 'Translate the following text into natural, fluent English.',
   formalize: 'Rewrite the following text in a more formal, professional tone.',
   simplify: 'Rewrite the following text in simple, plain language, avoiding jargon.',
   json_table:
@@ -24,14 +22,24 @@ function badRequest(message) {
   return err;
 }
 
-function buildRefinePrompt({ action, sourceText, previousOutput, instructions }) {
-  const instruction = action === 'custom' ? instructions : ACTION_PROMPTS[action];
+function buildRefinePrompt({ action, sourceText, previousOutput, instructions, targetLanguage }) {
+  let instruction;
+  if (action === 'custom') {
+    instruction = instructions;
+  } else if (action === 'translate') {
+    if (!targetLanguage || !targetLanguage.trim()) {
+      throw badRequest('Missing target language for translation.');
+    }
+    instruction = `Translate the following text into natural, fluent ${targetLanguage}, using that language's native script.`;
+  } else {
+    instruction = ACTION_PROMPTS[action];
+  }
   if (!instruction) throw badRequest(`Unknown action: ${action}`);
 
   // Translation always re-reads the original source to avoid
   // "translation of a translation" drift. Everything else refines
   // whatever the user is currently looking at.
-  const useSource = action.startsWith('translate_') || !previousOutput;
+  const useSource = action === 'translate' || !previousOutput;
   const basedOn = useSource ? 'sourceText' : 'previousOutput';
   const workingText = useSource ? sourceText : previousOutput;
 
@@ -68,11 +76,11 @@ export default async function handler(req, res) {
     });
   }
 
-  const { action, sourceText, previousOutput, instructions } = req.body || {};
+  const { action, sourceText, previousOutput, instructions, targetLanguage } = req.body || {};
 
   let prompt, basedOn;
   try {
-    ({ prompt, basedOn } = buildRefinePrompt({ action, sourceText, previousOutput, instructions }));
+    ({ prompt, basedOn } = buildRefinePrompt({ action, sourceText, previousOutput, instructions, targetLanguage }));
   } catch (err) {
     return res.status(err.statusCode || 400).json({ error: err.message });
   }
