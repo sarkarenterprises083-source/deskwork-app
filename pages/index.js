@@ -1,5 +1,29 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
+
+const HISTORY_KEY = 'deskwork_history';
+const HISTORY_LIMIT = 20;
+
+function loadHistory() {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveToHistory(entry) {
+  if (typeof window === 'undefined') return;
+  const existing = loadHistory();
+  const next = [
+    { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, timestamp: Date.now(), ...entry },
+    ...existing,
+  ].slice(0, HISTORY_LIMIT);
+  window.localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+  return next;
+}
 
 const TABS = [
   { id: 'summarize', label: 'Summarize' },
@@ -13,6 +37,11 @@ export default function Home() {
   const [status, setStatus] = useState({ text: '', error: false });
   const [output, setOutput] = useState(null); // { title, kind: 'text'|'table', text?, rows? }
   const [translateLang, setTranslateLang] = useState('Hindi');
+  const [history, setHistory] = useState([]);
+
+  useEffect(() => {
+    setHistory(loadHistory());
+  }, []);
 
   const INDIAN_LANGUAGES = [
     'Hindi', 'Bengali', 'Tamil', 'Telugu', 'Marathi', 'Gujarati',
@@ -113,12 +142,24 @@ export default function Home() {
           file: sumFile ? { mimeType: sumFile.mimeType, data: sumFile.data } : undefined,
         });
         setOutput({ title: 'Summary', kind: 'text', text: result });
+        setHistory(saveToHistory({
+          mode: 'summarize',
+          sourceText: sumText,
+          sourceFile: sumFile ? sumFile.name : null,
+          output: { title: 'Summary', kind: 'text', text: result },
+        }));
       } else if (mode === 'generate') {
         if (!genBrief.trim()) return setStatus({ text: 'Describe what you need first.', error: true });
         setBusy(true);
         setStatus({ text: 'Drafting…', error: false });
         const result = await callApi({ mode: 'generate', brief: genBrief, type: genType, tone: genTone });
         setOutput({ title: genType, kind: 'text', text: result });
+        setHistory(saveToHistory({
+          mode: 'generate',
+          sourceText: genBrief,
+          sourceFile: null,
+          output: { title: genType, kind: 'text', text: result },
+        }));
       } else if (mode === 'extract') {
         if (!extText.trim() && !extFile) {
           return setStatus({ text: 'Paste some text or attach a photo/document first.', error: true });
@@ -142,6 +183,12 @@ export default function Home() {
           throw new Error('Could not parse the extracted data.');
         }
         setOutput({ title: 'Extracted fields', kind: 'table', rows });
+        setHistory(saveToHistory({
+          mode: 'extract',
+          sourceText: extText,
+          sourceFile: extFile ? extFile.name : null,
+          output: { title: 'Extracted fields', kind: 'table', rows },
+        }));
       }
       setStatus({ text: '', error: false });
     } catch (err) {
@@ -183,6 +230,20 @@ export default function Home() {
     navigator.clipboard.writeText(plainTextForCopy());
   }
 
+  function handleSelectHistory(item) {
+    setMode(item.mode);
+    setOutput(item.output);
+    setStatus({ text: '', error: false });
+    if (item.mode === 'summarize') setSumText(item.sourceText || '');
+    if (item.mode === 'extract') setExtText(item.sourceText || '');
+    if (item.mode === 'generate') setGenBrief(item.sourceText || '');
+  }
+
+  function handleClearHistory() {
+    window.localStorage.removeItem(HISTORY_KEY);
+    setHistory([]);
+  }
+
   return (
     <div className="wrap">
       <Head>
@@ -196,7 +257,9 @@ export default function Home() {
         <p>Three tools for what a page of text needs: shorter, more, or sorted into fields.</p>
       </div>
 
-      <div className="tabs" role="tablist" aria-label="Choose a tool">
+      <div className="layout">
+        <div className="main-col">
+        <div className="tabs" role="tablist" aria-label="Choose a tool">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -347,6 +410,34 @@ export default function Home() {
             )}
           </div>
         )}
+      </div>
+        </div>
+
+        <div className="sidebar-col">
+          <div className="history-list">
+            <div className="history-head">
+              <span>Recent Activity</span>
+              {history.length > 0 && (
+                <button className="copy" onClick={handleClearHistory}>Clear</button>
+              )}
+            </div>
+            {history.length === 0 ? (
+              <p className="empty-hint">No activity yet — your recent results will show up here.</p>
+            ) : (
+              history.map((item) => (
+                <button key={item.id} className="history-item" onClick={() => handleSelectHistory(item)}>
+                  <span className="history-item-mode">{item.mode}</span>
+                  <span className="history-item-text">
+                    {(item.sourceText || item.sourceFile || 'attachment').slice(0, 60)}
+                  </span>
+                  <span className="history-item-time">
+                    {new Date(item.timestamp).toLocaleString()}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
