@@ -80,6 +80,7 @@ export default function Home() {
       setStatus({ text: 'File is too large. Please use a file under 4MB.', error: true });
       return;
     }
+    clearResultIfPresent();
     try {
       const data = await fileToBase64(file);
       setter({ name: file.name || 'attachment', mimeType: file.type, data });
@@ -108,6 +109,21 @@ export default function Home() {
     setMode(next);
     setOutput(null);
     setStatus({ text: '', error: false });
+  }
+
+  // Auto-clear: whenever the user starts fresh input (typing, pasting text,
+  // or attaching a new file) on top of an existing result, clear that result
+  // so they're never reading stale output. Triggers on real input changes
+  // only — never on bare focus — so tapping back into a field to re-read it
+  // doesn't wipe anything.
+  function clearResultIfPresent() {
+    if (output) setOutput(null);
+    if (status.text) setStatus({ text: '', error: false });
+  }
+
+  function handleTextChange(value, setter) {
+    clearResultIfPresent();
+    setter(value);
   }
 
   async function callApi(body) {
@@ -282,7 +298,7 @@ export default function Home() {
                 id="sum-text"
                 placeholder="Drop an article, report, or transcript here… (or paste a photo)"
                 value={sumText}
-                onChange={(e) => setSumText(e.target.value)}
+                onChange={(e) => handleTextChange(e.target.value, setSumText)}
                 onPaste={(e) => handlePaste(e, setSumFile)}
               />
               <FileAttach file={sumFile} onPick={(f) => handleFilePicked(f, setSumFile)} onClear={() => setSumFile(null)} idPrefix="sum" />
@@ -309,7 +325,7 @@ export default function Home() {
                 id="gen-brief"
                 placeholder="e.g. A launch email for a new espresso machine, aimed at home baristas…"
                 value={genBrief}
-                onChange={(e) => setGenBrief(e.target.value)}
+                onChange={(e) => handleTextChange(e.target.value, setGenBrief)}
               />
             </div>
             <div className="row">
@@ -346,7 +362,7 @@ export default function Home() {
                 id="ext-text"
                 placeholder="Drop an invoice, listing, email, or contract here… (or paste a photo)"
                 value={extText}
-                onChange={(e) => setExtText(e.target.value)}
+                onChange={(e) => handleTextChange(e.target.value, setExtText)}
                 onPaste={(e) => handlePaste(e, setExtFile)}
               />
               <FileAttach file={extFile} onPick={(f) => handleFilePicked(f, setExtFile)} onClear={() => setExtFile(null)} idPrefix="ext" />
