@@ -12,6 +12,12 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState({ text: '', error: false });
   const [output, setOutput] = useState(null); // { title, kind: 'text'|'table', text?, rows? }
+  const [translateLang, setTranslateLang] = useState('Hindi');
+
+  const INDIAN_LANGUAGES = [
+    'Hindi', 'Bengali', 'Tamil', 'Telugu', 'Marathi', 'Gujarati',
+    'Kannada', 'Malayalam', 'Punjabi', 'Odia', 'Assamese', 'English',
+  ];
 
   // Summarize state
   const [sumText, setSumText] = useState('');
@@ -140,6 +146,28 @@ export default function Home() {
       setStatus({ text: '', error: false });
     } catch (err) {
       setStatus({ text: err.message || 'Something went wrong.', error: true });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRefine(action, extra) {
+    if (!output || output.kind !== 'text') return;
+    setStatus({ text: 'Refining…', error: false });
+    setBusy(true);
+    try {
+      const sourceText = mode === 'summarize' ? sumText : mode === 'extract' ? extText : genBrief;
+      const res = await fetch('/api/refine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, sourceText, previousOutput: output.text, ...extra }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+      setOutput({ ...output, text: data.result });
+      setStatus({ text: '', error: false });
+    } catch (err) {
+      setStatus({ text: err.message || 'Could not refine.', error: true });
     } finally {
       setBusy(false);
     }
@@ -289,7 +317,31 @@ export default function Home() {
               </button>
             </div>
             {output.kind === 'text' ? (
-              <div className="result-text">{output.text}</div>
+              <div>
+                <div className="result-text">{output.text}</div>
+                <div className="refine-row">
+                  <button className="refine-btn" onClick={() => handleRefine('shorten')} disabled={busy}>Shorten</button>
+                  <button className="refine-btn" onClick={() => handleRefine('lengthen')} disabled={busy}>Lengthen</button>
+                  <button className="refine-btn" onClick={() => handleRefine('formalize')} disabled={busy}>Formalize</button>
+                  <button className="refine-btn" onClick={() => handleRefine('simplify')} disabled={busy}>Simplify</button>
+                  <select
+                    className="refine-lang"
+                    value={translateLang}
+                    onChange={(e) => setTranslateLang(e.target.value)}
+                  >
+                    {INDIAN_LANGUAGES.map((lang) => (
+                      <option key={lang} value={lang}>{lang}</option>
+                    ))}
+                  </select>
+                  <button
+                    className="refine-btn"
+                    onClick={() => handleRefine('translate', { targetLanguage: translateLang })}
+                    disabled={busy}
+                  >
+                    Translate
+                  </button>
+                </div>
+              </div>
             ) : (
               <ExtractTable rows={output.rows} />
             )}
