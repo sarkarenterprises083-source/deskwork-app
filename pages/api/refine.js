@@ -5,6 +5,10 @@
 const { checkRateLimit, MAX_REQUESTS_PER_WINDOW } = require('../../lib/rateLimit');
 const { routeRequest } = require('../../lib/modelRouter');
 
+// Raise the serverless function timeout from Vercel's 10s default to the
+// Hobby-plan max, so slower model responses have time to complete.
+export const maxDuration = 60;
+
 const ACTION_PROMPTS = {
   summarize: 'Summarize the following text concisely.',
   shorten: 'Make the following text shorter while keeping the key meaning.',
