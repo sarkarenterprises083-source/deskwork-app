@@ -180,6 +180,7 @@ button.stamp:focus-visible{ outline: 2px solid var(--stamp); outline-offset:3px;
 .output-head{
   display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;
 }
+.output-actions{ display:flex; gap:8px; }
 .output-head h2{
   font-family:'Zilla Slab', serif; font-size:16px; margin:0; color:var(--ink);
 }
@@ -230,4 +231,16 @@ table.extract th{
 
 @media (prefers-reduced-motion: reduce){
   *{ transition:none !important; }
+}
+
+/* Print / Download PDF: hide everything except the result being printed */
+@media print{
+  body{ background:#fff; }
+  body *{ visibility:hidden; }
+  .printable, .printable *{ visibility:visible; }
+  .printable{
+    position:absolute; top:0; left:0; width:100%;
+    margin:0; padding:0; border:none; box-shadow:none;
+  }
+  .no-print{ display:none !important; }
 }
