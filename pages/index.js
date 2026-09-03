@@ -246,6 +246,14 @@ export default function Home() {
     navigator.clipboard.writeText(plainTextForCopy());
   }
 
+  function handleDownloadPdf() {
+    if (!output) return;
+    const previousTitle = document.title;
+    document.title = `Deskwork - ${output.title}`;
+    window.print();
+    document.title = previousTitle;
+  }
+
   function handleSelectHistory(item) {
     setMode(item.mode);
     setOutput(item.output);
@@ -388,17 +396,22 @@ export default function Home() {
         </div>
 
         {output && (
-          <div className="output">
+          <div className="output printable">
             <div className="output-head">
               <h2>{output.title}</h2>
-              <button className="copy" onClick={handleCopy}>
-                Copy
-              </button>
+              <div className="output-actions no-print">
+                <button className="copy" onClick={handleCopy}>
+                  Copy
+                </button>
+                <button className="copy" onClick={handleDownloadPdf}>
+                  Download PDF
+                </button>
+              </div>
             </div>
             {output.kind === 'text' ? (
               <div>
                 <div className="result-text">{output.text}</div>
-                <div className="refine-row">
+                <div className="refine-row no-print">
                   <button className="refine-btn" onClick={() => handleRefine('shorten')} disabled={busy}>Shorten</button>
                   <button className="refine-btn" onClick={() => handleRefine('lengthen')} disabled={busy}>Lengthen</button>
                   <button className="refine-btn" onClick={() => handleRefine('formalize')} disabled={busy}>Formalize</button>
