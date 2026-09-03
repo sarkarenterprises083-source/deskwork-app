@@ -8,6 +8,16 @@ const SUMMARIZE_SYSTEM =
   "You summarize text accurately and concisely. Output only the summary itself, " +
   "with no preamble, no 'Here is a summary' framing, and no closing remarks.";
 
+const BRIEF_SYSTEM =
+  "You turn text or a document into a structured executive brief. Respond with ONLY a " +
+  "raw JSON object, no markdown fences, no commentary, in this exact shape: " +
+  '{"summary": ["point 1", "point 2", ...], "actionItems": ["action 1", "action 2", ...]}. ' +
+  "The summary array holds concise executive-summary bullet points covering the key " +
+  "information. The actionItems array holds concrete, actionable next steps or to-dos " +
+  "implied or stated by the text — phrased as imperative tasks (e.g. \"Follow up with " +
+  "vendor by Friday\", not \"the vendor needs to be followed up with\"). If the text has " +
+  "no clear action items, return an empty array for actionItems rather than inventing one.";
+
 const GENERATE_SYSTEM_TEMPLATE = (tone) =>
   `You are a skilled copywriter. Write the requested content in a ${tone.toLowerCase()} tone. ` +
   "Output only the finished piece, with no preamble, no meta-commentary, and no markdown " +
@@ -99,6 +109,22 @@ function buildRequest(mode, payload) {
         : `Summarize the following text as ${length}.\n\nTEXT:\n${text}`,
     });
     return { system: SUMMARIZE_SYSTEM, parts };
+  }
+
+  if (mode === 'brief') {
+    const { text, file } = payload;
+    const filePart = buildFilePart(file);
+    if (!filePart && (!text || !text.trim())) {
+      throw badRequest('Paste some text or attach a photo/document to brief.');
+    }
+    const parts = [];
+    if (filePart) parts.push(filePart);
+    parts.push({
+      text: filePart
+        ? 'Produce an executive summary and action items for the attached file.'
+        : `Produce an executive summary and action items for the following text.\n\nTEXT:\n${text}`,
+    });
+    return { system: BRIEF_SYSTEM, parts };
   }
 
   if (mode === 'generate') {
