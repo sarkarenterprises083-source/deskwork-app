@@ -35,7 +35,7 @@ export default function Home() {
   const [mode, setMode] = useState('summarize');
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState({ text: '', error: false });
-  const [output, setOutput] = useState(null); // { title, kind: 'text'|'table', text?, rows? }
+  const [output, setOutput] = useState(null); // { title, kind: 'text'|'table'|'brief', text?, rows?, summary?, actionItems? }
   const [translateLang, setTranslateLang] = useState('Hindi');
   const [history, setHistory] = useState([]);
 
@@ -52,6 +52,7 @@ export default function Home() {
   const [sumText, setSumText] = useState('');
   const [sumLength, setSumLength] = useState('a short paragraph');
   const [sumFile, setSumFile] = useState(null); // { name, mimeType, data }
+  const [sumBriefMode, setSumBriefMode] = useState(false);
 
   // Generate state
   const [genBrief, setGenBrief] = useState('');
@@ -150,20 +151,51 @@ export default function Home() {
           return setStatus({ text: 'Paste some text or attach a photo/document first.', error: true });
         }
         setBusy(true);
-        setStatus({ text: 'Reading it over…', error: false });
-        const result = await callApi({
-          mode: 'summarize',
-          text: sumText,
-          length: sumLength,
-          file: sumFile ? { mimeType: sumFile.mimeType, data: sumFile.data } : undefined,
-        });
-        setOutput({ title: 'Summary', kind: 'text', text: result });
-        setHistory(saveToHistory({
-          mode: 'summarize',
-          sourceText: sumText,
-          sourceFile: sumFile ? sumFile.name : null,
-          output: { title: 'Summary', kind: 'text', text: result },
-        }));
+
+        if (sumBriefMode) {
+          setStatus({ text: 'Building your brief…', error: false });
+          const raw = await callApi({
+            mode: 'brief',
+            text: sumText,
+            file: sumFile ? { mimeType: sumFile.mimeType, data: sumFile.data } : undefined,
+          });
+          let parsed;
+          try {
+            const cleaned = raw.replace(/```json|```/g, '').trim();
+            parsed = JSON.parse(cleaned);
+          } catch (e) {
+            throw new Error('Could not parse the brief.');
+          }
+          const out = {
+            title: 'Executive Brief',
+            kind: 'brief',
+            summary: Array.isArray(parsed.summary) ? parsed.summary : [],
+            actionItems: Array.isArray(parsed.actionItems) ? parsed.actionItems : [],
+          };
+          setOutput(out);
+          setHistory(saveToHistory({
+            mode: 'summarize',
+            sourceText: sumText,
+            sourceFile: sumFile ? sumFile.name : null,
+            output: out,
+          }));
+        } else {
+          setStatus({ text: 'Reading it over…', error: false });
+          const result = await callApi({
+            mode: 'summarize',
+            text: sumText,
+            length: sumLength,
+            file: sumFile ? { mimeType: sumFile.mimeType, data: sumFile.data } : undefined,
+          });
+          const out = { title: 'Summary', kind: 'text', text: result };
+          setOutput(out);
+          setHistory(saveToHistory({
+            mode: 'summarize',
+            sourceText: sumText,
+            sourceFile: sumFile ? sumFile.name : null,
+            output: out,
+          }));
+        }
       } else if (mode === 'generate') {
         if (!genBrief.trim()) return setStatus({ text: 'Describe what you need first.', error: true });
         setBusy(true);
@@ -239,6 +271,11 @@ export default function Home() {
   function plainTextForCopy() {
     if (!output) return '';
     if (output.kind === 'text') return output.text;
+    if (output.kind === 'brief') {
+      const summaryText = output.summary.map((s) => `• ${s}`).join('\n');
+      const actionsText = output.actionItems.map((a) => `☐ ${a}`).join('\n');
+      return `EXECUTIVE SUMMARY\n${summaryText}\n\nACTION ITEMS\n${actionsText}`;
+    }
     return JSON.stringify(output.rows, null, 2);
   }
 
@@ -314,7 +351,7 @@ export default function Home() {
             <div className="row">
               <div className="field">
                 <label htmlFor="sum-length">Length</label>
-                <select id="sum-length" value={sumLength} onChange={(e) => setSumLength(e.target.value)}>
+                <select id="sum-length" value={sumLength} onChange={(e) => setSumLength(e.target.value)} disabled={sumBriefMode}>
                   <option value="one sentence">One sentence</option>
                   <option value="a short paragraph">Short paragraph</option>
                   <option value="a bulleted list of key points">Bulleted key points</option>
@@ -322,6 +359,14 @@ export default function Home() {
                 </select>
               </div>
             </div>
+            <label className="brief-toggle">
+              <input
+                type="checkbox"
+                checked={sumBriefMode}
+                onChange={(e) => { clearResultIfPresent(); setSumBriefMode(e.target.checked); }}
+              />
+              Also pull out action items (executive brief)
+            </label>
           </div>
         )}
 
@@ -408,7 +453,7 @@ export default function Home() {
                 </button>
               </div>
             </div>
-            {output.kind === 'text' ? (
+            {output.kind === 'text' && (
               <div>
                 <div className="result-text">{output.text}</div>
                 <div className="refine-row no-print">
@@ -434,9 +479,9 @@ export default function Home() {
                   </button>
                 </div>
               </div>
-            ) : (
-              <ExtractTable rows={output.rows} />
             )}
+            {output.kind === 'table' && <ExtractTable rows={output.rows} />}
+            {output.kind === 'brief' && <BriefView summary={output.summary} actionItems={output.actionItems} />}
           </div>
         )}
       </div>
@@ -508,6 +553,56 @@ function FileAttach({ file, onPick, onClear, idPrefix }) {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function BriefView({ summary, actionItems }) {
+  const [checked, setChecked] = useState({});
+
+  function toggle(i) {
+    setChecked((prev) => ({ ...prev, [i]: !prev[i] }));
+  }
+
+  return (
+    <div className="brief-view">
+      <div className="brief-section">
+        <h3 className="brief-heading">Executive Summary</h3>
+        {summary.length === 0 ? (
+          <p className="empty-hint">No summary points found.</p>
+        ) : (
+          <ul className="brief-summary-list">
+            {summary.map((point, i) => (
+              <li key={i}>{point}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <div className="brief-section">
+        <h3 className="brief-heading">Action Items</h3>
+        {actionItems.length === 0 ? (
+          <p className="empty-hint">No action items found.</p>
+        ) : (
+          <ul className="brief-action-list no-print">
+            {actionItems.map((item, i) => (
+              <li key={i}>
+                <label className="brief-checkbox">
+                  <input type="checkbox" checked={!!checked[i]} onChange={() => toggle(i)} />
+                  <span className={checked[i] ? 'checked-text' : ''}>{item}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        )}
+        {/* Plain list for printing/PDF, since checkboxes don't render well in print */}
+        {actionItems.length > 0 && (
+          <ul className="brief-action-list print-only">
+            {actionItems.map((item, i) => (
+              <li key={i}>☐ {item}</li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
