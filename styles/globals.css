@@ -145,6 +145,27 @@ textarea:focus-visible, input[type=text]:focus-visible{
 .row{ display:flex; gap:18px; flex-wrap:wrap; }
 .row .field{ flex:1; min-width: 180px; }
 
+.brief-toggle{
+  display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink-soft);
+  cursor:pointer; margin-bottom:6px; text-transform:none; letter-spacing:normal;
+}
+.brief-toggle input{ accent-color:var(--accent); width:15px; height:15px; }
+
+.brief-view{ display:flex; flex-direction:column; gap:22px; padding-left:62px; }
+@media (max-width: 520px){ .brief-view{ padding-left:0; } }
+.brief-heading{
+  font-family:'Zilla Slab', serif; font-size:14px; margin:0 0 8px; color:var(--accent);
+  text-transform:uppercase; letter-spacing:.04em;
+}
+.brief-summary-list{ margin:0; padding-left:20px; font-size:14px; line-height:1.7; color:var(--ink); }
+.brief-summary-list li{ margin-bottom:4px; }
+.brief-action-list{ list-style:none; margin:0; padding:0; }
+.brief-action-list li{ margin-bottom:6px; }
+.brief-checkbox{ display:flex; align-items:flex-start; gap:8px; font-size:14px; color:var(--ink); cursor:pointer; }
+.brief-checkbox input{ accent-color:var(--accent); width:16px; height:16px; margin-top:2px; flex-shrink:0; }
+.checked-text{ text-decoration:line-through; color:var(--ink-soft); }
+.print-only{ display:none; }
+
 select{
   width:100%; font-family:'IBM Plex Mono', monospace; font-size:13.5px;
   color:var(--ink); background:var(--accent-soft);
@@ -243,4 +264,5 @@ table.extract th{
     margin:0; padding:0; border:none; box-shadow:none;
   }
   .no-print{ display:none !important; }
+  .print-only{ display:block !important; }
 }
