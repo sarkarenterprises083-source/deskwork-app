@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
+import { supabase } from '../lib/supabaseClient';
 
 const HISTORY_KEY = 'deskwork_history';
 const HISTORY_LIMIT = 20;
@@ -35,9 +36,33 @@ export default function Home() {
   const [mode, setMode] = useState('summarize');
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState({ text: '', error: false });
-  const [output, setOutput] = useState(null); // { title, kind: 'text'|'table'|'brief', text?, rows?, summary?, actionItems? }
+  const [output, setOutput] = useState(null); // { title, kind: 'text'|'table', text?, rows? }
   const [translateLang, setTranslateLang] = useState('Hindi');
   const [history, setHistory] = useState([]);
+  const [session, setSession] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setAuthLoading(false);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  function handleSignIn() {
+    supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    });
+  }
+
+  function handleSignOut() {
+    supabase.auth.signOut();
+  }
 
   useEffect(() => {
     setHistory(loadHistory());
@@ -130,12 +155,17 @@ export default function Home() {
   async function callApi(body) {
     const res = await fetch('/api/process', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: session ? `Bearer ${session.access_token}` : '',
+      },
       body: JSON.stringify(body),
     });
     const data = await res.json();
     if (!res.ok) {
       if (res.status === 429) throw new Error(data.error || 'Too many requests — please slow down.');
+      if (res.status === 403) throw new Error(data.error || 'Free plan limit reached.');
+      if (res.status === 401) throw new Error('Please sign in to use Deskwork.');
       throw new Error(data.error || `Request failed (${res.status})`);
     }
     return data.result;
@@ -254,7 +284,10 @@ export default function Home() {
       const sourceText = mode === 'summarize' ? sumText : mode === 'extract' ? extText : genBrief;
       const res = await fetch('/api/refine', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: session ? `Bearer ${session.access_token}` : '',
+        },
         body: JSON.stringify({ action, sourceText, previousOutput: output.text, ...extra }),
       });
       const data = await res.json();
@@ -317,6 +350,20 @@ export default function Home() {
         <h1>Deskwork</h1>
         <p>Three tools for what a page of text needs: shorter, more, or sorted into fields.</p>
       </div>
+
+      {authLoading ? (
+        <p className="empty-hint">Loading…</p>
+      ) : !session ? (
+        <div className="signin-card">
+          <p>Sign in with Google to use Deskwork — free plan included, no card needed.</p>
+          <button className="stamp" onClick={handleSignIn}>Sign in with Google</button>
+        </div>
+      ) : (
+        <>
+          <div className="account-bar">
+            <span>{session.user.email}</span>
+            <button className="copy" onClick={handleSignOut}>Sign out</button>
+          </div>
 
       <div className="layout">
         <div className="main-col">
@@ -513,6 +560,8 @@ export default function Home() {
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }
