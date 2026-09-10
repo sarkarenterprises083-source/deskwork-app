@@ -3,6 +3,9 @@
 
 const { checkRateLimit, MAX_REQUESTS_PER_WINDOW } = require('../../lib/rateLimit');
 const { routeRequest } = require('../../lib/modelRouter');
+const { verifyUser } = require('../../lib/verifyUser');
+const { checkAndIncrementUsage, FREE_DAILY_LIMIT } = require('../../lib/usageGate');
+const { supabaseAdmin } = require('../../lib/supabaseAdmin');
 
 const SUMMARIZE_SYSTEM =
   "You summarize text accurately and concisely. Output only the summary itself, " +
@@ -178,6 +181,16 @@ export default async function handler(req, res) {
     return res.status(429).json({
       error: `Too many requests. Try again in about ${Math.ceil(rate.resetInSeconds / 60)} minute(s).`,
     });
+  }
+
+  const user = await verifyUser(req);
+  if (!user) {
+    return res.status(401).json({ error: 'Please sign in to use Deskwork.' });
+  }
+
+  const usage = await checkAndIncrementUsage(supabaseAdmin, user.id);
+  if (!usage.allowed) {
+    return res.status(403).json({ error: usage.reason, upgradeRequired: true });
   }
 
   const apiKey = process.env.GOOGLE_API_KEY;
