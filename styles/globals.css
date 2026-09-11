@@ -59,6 +59,18 @@ body{
   margin:6px 0 0; color:var(--ink-soft); font-size:13.5px; max-width:52ch;
 }
 
+.signin-card{
+  background:var(--white); border:1px solid var(--rule); border-radius:6px;
+  padding:24px; text-align:center; display:flex; flex-direction:column; gap:14px;
+  align-items:center; max-width:420px; margin:20px auto 0;
+}
+.signin-card p{ margin:0; font-size:13.5px; color:var(--ink-soft); }
+
+.account-bar{
+  display:flex; justify-content:space-between; align-items:center;
+  font-size:12px; color:var(--ink-soft); margin:14px 0 -6px;
+}
+
 .tabs{
   display:flex; gap:2px; margin: 26px 0 0; position:relative; z-index:2;
 }
