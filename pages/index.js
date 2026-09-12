@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
+import Script from 'next/script';
 import { supabase } from '../lib/supabaseClient';
 
 const HISTORY_KEY = 'deskwork_history';
@@ -41,6 +42,8 @@ export default function Home() {
   const [history, setHistory] = useState([]);
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [account, setAccount] = useState(null); // { isPaid, isTrialActive, trialDaysLeft, ... }
+  const [upgrading, setUpgrading] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -67,6 +70,79 @@ export default function Home() {
   useEffect(() => {
     setHistory(loadHistory());
   }, []);
+
+  useEffect(() => {
+    if (!session) {
+      setAccount(null);
+      return;
+    }
+    fetch('/api/me', { headers: { Authorization: `Bearer ${session.access_token}` } })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setAccount(data))
+      .catch(() => setAccount(null));
+  }, [session]);
+
+  async function refreshAccount() {
+    if (!session) return;
+    try {
+      const res = await fetch('/api/me', { headers: { Authorization: `Bearer ${session.access_token}` } });
+      if (res.ok) setAccount(await res.json());
+    } catch {}
+  }
+
+  async function handleUpgrade(plan) {
+    if (!session || upgrading) return;
+    setUpgrading(true);
+    setStatus({ text: '', error: false });
+    try {
+      const orderRes = await fetch('/api/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ plan }),
+      });
+      const order = await orderRes.json();
+      if (!orderRes.ok) throw new Error(order.error || 'Could not start checkout.');
+
+      if (!window.Razorpay) throw new Error('Payment system is still loading — please try again in a moment.');
+
+      const rzp = new window.Razorpay({
+        key: order.keyId,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'Deskwork',
+        description: order.planLabel || 'Deskwork subscription',
+        order_id: order.orderId,
+        prefill: { email: session.user.email },
+        theme: { color: '#111111' },
+        handler: async function (response) {
+          try {
+            const verifyRes = await fetch('/api/verify-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+              body: JSON.stringify({ ...response, plan }),
+            });
+            const result = await verifyRes.json();
+            if (!verifyRes.ok) throw new Error(result.error || 'Payment verification failed.');
+            setStatus({ text: "You're now on Deskwork Pro!", error: false });
+            refreshAccount();
+          } catch (err) {
+            setStatus({ text: err.message || 'Payment verification failed.', error: true });
+          }
+        },
+        modal: {
+          ondismiss: function () { setUpgrading(false); },
+        },
+      });
+      rzp.on('payment.failed', function (resp) {
+        setStatus({ text: resp.error && resp.error.description ? resp.error.description : 'Payment failed.', error: true });
+      });
+      rzp.open();
+    } catch (err) {
+      setStatus({ text: err.message || 'Could not start checkout.', error: true });
+    } finally {
+      setUpgrading(false);
+    }
+  }
 
   const INDIAN_LANGUAGES = [
     'Hindi', 'Bengali', 'Tamil', 'Telugu', 'Marathi', 'Gujarati',
@@ -344,6 +420,7 @@ export default function Home() {
         <title>Deskwork — Text Tools</title>
         <meta name="description" content="Summarize, generate, and extract text with three simple tools." />
       </Head>
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
 
       <div className="masthead">
         <p className="eyebrow">Deskwork · No. 3 tools</p>
@@ -364,6 +441,24 @@ export default function Home() {
             <span>{session.user.email}</span>
             <button className="copy" onClick={handleSignOut}>Sign out</button>
           </div>
+
+          {account && !account.isPaid && (
+            <div className={`trial-banner${account.isTrialActive ? '' : ' expired'}`}>
+              <span>
+                {account.isTrialActive
+                  ? `Free trial — ${account.trialDaysLeft} day${account.trialDaysLeft === 1 ? '' : 's'} left`
+                  : 'Your free trial has ended — upgrade to keep using Deskwork without daily limits.'}
+              </span>
+              <div className="upgrade-buttons">
+                <button className="stamp" onClick={() => handleUpgrade('basic')} disabled={upgrading}>
+                  {upgrading ? 'Opening checkout…' : 'Basic — ₹99/mo'}
+                </button>
+                <button className="stamp" onClick={() => handleUpgrade('pro')} disabled={upgrading}>
+                  {upgrading ? 'Opening checkout…' : 'Pro — ₹299/mo'}
+                </button>
+              </div>
+            </div>
+          )}
 
       <div className="layout">
         <div className="main-col">
