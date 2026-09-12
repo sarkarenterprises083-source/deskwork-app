@@ -278,3 +278,28 @@ table.extract th{
   .no-print{ display:none !important; }
   .print-only{ display:block !important; }
 }
+
+.trial-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  background: #eef6ff;
+  border: 1px solid #bcdcff;
+  font-size: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.trial-banner.expired {
+  background: #fff4e5;
+  border-color: #ffd9a0;
+}
+
+.upgrade-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
