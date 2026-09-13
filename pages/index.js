@@ -103,7 +103,7 @@ export default function Home() {
       const order = await orderRes.json();
       if (!orderRes.ok) throw new Error(order.error || 'Could not start checkout.');
 
-      if (!window.Razorpay) throw new Error('Payment system is still loading â€” please try again in a moment.');
+      if (!window.Razorpay) throw new Error('Payment system is still loading - please try again in a moment.');
 
       const rzp = new window.Razorpay({
         key: order.keyId,
@@ -216,7 +216,7 @@ export default function Home() {
   // Auto-clear: whenever the user starts fresh input (typing, pasting text,
   // or attaching a new file) on top of an existing result, clear that result
   // so they're never reading stale output. Triggers on real input changes
-  // only â€” never on bare focus â€” so tapping back into a field to re-read it
+  // only - never on bare focus - so tapping back into a field to re-read it
   // doesn't wipe anything.
   function clearResultIfPresent() {
     if (output) setOutput(null);
@@ -239,7 +239,7 @@ export default function Home() {
     });
     const data = await res.json();
     if (!res.ok) {
-      if (res.status === 429) throw new Error(data.error || 'Too many requests â€” please slow down.');
+      if (res.status === 429) throw new Error(data.error || 'Too many requests - please slow down.');
       if (res.status === 403) throw new Error(data.error || 'Free plan limit reached.');
       if (res.status === 401) throw new Error('Please sign in to use Deskwork.');
       throw new Error(data.error || `Request failed (${res.status})`);
@@ -259,7 +259,7 @@ export default function Home() {
         setBusy(true);
 
         if (sumBriefMode) {
-          setStatus({ text: 'Building your briefâ€¦', error: false });
+          setStatus({ text: 'Building your brief...', error: false });
           const raw = await callApi({
             mode: 'brief',
             text: sumText,
@@ -286,7 +286,7 @@ export default function Home() {
             output: out,
           }));
         } else {
-          setStatus({ text: 'Reading it overâ€¦', error: false });
+          setStatus({ text: 'Reading it over...', error: false });
           const result = await callApi({
             mode: 'summarize',
             text: sumText,
@@ -305,7 +305,7 @@ export default function Home() {
       } else if (mode === 'generate') {
         if (!genBrief.trim()) return setStatus({ text: 'Describe what you need first.', error: true });
         setBusy(true);
-        setStatus({ text: 'Draftingâ€¦', error: false });
+        setStatus({ text: 'Drafting...', error: false });
         const result = await callApi({ mode: 'generate', brief: genBrief, type: genType, tone: genTone });
         setOutput({ title: genType, kind: 'text', text: result });
         setHistory(saveToHistory({
@@ -321,7 +321,7 @@ export default function Home() {
         const fields = extFields.split(',').map((f) => f.trim()).filter(Boolean);
         if (fields.length === 0) return setStatus({ text: 'List at least one field to extract.', error: true });
         setBusy(true);
-        setStatus({ text: 'Sorting into fieldsâ€¦', error: false });
+        setStatus({ text: 'Sorting into fields...', error: false });
         const raw = await callApi({
           mode: 'extract',
           text: extText,
@@ -354,7 +354,7 @@ export default function Home() {
 
   async function handleRefine(action, extra) {
     if (!output || output.kind !== 'text') return;
-    setStatus({ text: 'Refiningâ€¦', error: false });
+    setStatus({ text: 'Refining...', error: false });
     setBusy(true);
     try {
       const sourceText = mode === 'summarize' ? sumText : mode === 'extract' ? extText : genBrief;
@@ -417,7 +417,7 @@ export default function Home() {
   return (
     <div className="wrap">
       <Head>
-        <title>Deskwork â€” Text Tools</title>
+        <title>Deskwork - Text Tools</title>
         <meta name="description" content="Summarize, generate, and extract text with three simple tools." />
       </Head>
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
@@ -429,10 +429,10 @@ export default function Home() {
       </div>
 
       {authLoading ? (
-        <p className="empty-hint">Loadingâ€¦</p>
+        <p className="empty-hint">Loading...</p>
       ) : !session ? (
         <div className="signin-card">
-          <p>Sign in with Google to use Deskwork â€” free plan included, no card needed.</p>
+          <p>Sign in with Google to use Deskwork - free plan included, no card needed.</p>
           <button className="stamp" onClick={handleSignIn}>Sign in with Google</button>
         </div>
       ) : (
@@ -446,15 +446,15 @@ export default function Home() {
             <div className={`trial-banner${account.isTrialActive ? '' : ' expired'}`}>
               <span>
                 {account.isTrialActive
-                  ? `Free trial â€” ${account.trialDaysLeft} day${account.trialDaysLeft === 1 ? '' : 's'} left`
-                  : 'Your free trial has ended â€” upgrade to keep using Deskwork without daily limits.'}
+                  ? `Free trial - ${account.trialDaysLeft} day${account.trialDaysLeft === 1 ? '' : 's'} left`
+                  : 'Your free trial has ended - upgrade to keep using Deskwork without daily limits.'}
               </span>
               <div className="upgrade-buttons">
                 <button className="stamp" onClick={() => handleUpgrade('basic')} disabled={upgrading}>
-                  {upgrading ? 'Opening checkoutâ€¦' : 'Basic â€” â‚¹99/mo'}
+                  {upgrading ? 'Opening checkout...' : 'Basic - Rs. 99/mo'}
                 </button>
                 <button className="stamp" onClick={() => handleUpgrade('pro')} disabled={upgrading}>
-                  {upgrading ? 'Opening checkoutâ€¦' : 'Pro â€” â‚¹299/mo'}
+                  {upgrading ? 'Opening checkout...' : 'Pro - Rs. 299/mo'}
                 </button>
               </div>
             </div>
@@ -483,7 +483,7 @@ export default function Home() {
               <label htmlFor="sum-text">Paste text, or attach a photo/document</label>
               <textarea
                 id="sum-text"
-                placeholder="Drop an article, report, or transcript hereâ€¦ (or paste a photo)"
+                placeholder="Drop an article, report, or transcript here... (or paste a photo)"
                 value={sumText}
                 onChange={(e) => handleTextChange(e.target.value, setSumText)}
                 onPaste={(e) => handlePaste(e, setSumFile)}
@@ -518,7 +518,7 @@ export default function Home() {
               <label htmlFor="gen-brief">Describe what you need</label>
               <textarea
                 id="gen-brief"
-                placeholder="e.g. A launch email for a new espresso machine, aimed at home baristasâ€¦"
+                placeholder="e.g. A launch email for a new espresso machine, aimed at home baristas..."
                 value={genBrief}
                 onChange={(e) => handleTextChange(e.target.value, setGenBrief)}
               />
@@ -555,7 +555,7 @@ export default function Home() {
               <label htmlFor="ext-text">Paste source text, or attach a photo/document</label>
               <textarea
                 id="ext-text"
-                placeholder="Drop an invoice, listing, email, or contract hereâ€¦ (or paste a photo)"
+                placeholder="Drop an invoice, listing, email, or contract here... (or paste a photo)"
                 value={extText}
                 onChange={(e) => handleTextChange(e.target.value, setExtText)}
                 onPaste={(e) => handlePaste(e, setExtFile)}
@@ -638,7 +638,7 @@ export default function Home() {
               )}
             </div>
             {history.length === 0 ? (
-              <p className="empty-hint">No activity yet â€” your recent results will show up here.</p>
+              <p className="empty-hint">No activity yet - your recent results will show up here.</p>
             ) : (
               history.map((item) => (
                 <button key={item.id} className="history-item" onClick={() => handleSelectHistory(item)}>
@@ -769,7 +769,7 @@ function ExtractTable({ rows }) {
         {rows.map((row, i) => (
           <tr key={i}>
             {keys.map((k) => (
-              <td key={k}>{row[k] === null || row[k] === undefined ? 'â€”' : String(row[k])}</td>
+              <td key={k}>{row[k] === null || row[k] === undefined ? '-' : String(row[k])}</td>
             ))}
           </tr>
         ))}
