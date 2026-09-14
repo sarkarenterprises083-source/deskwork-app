@@ -1,10 +1,9 @@
 const { verifyUser } = require('../../lib/verifyUser');
 const { createOrder } = require('../../lib/razorpay');
 
-// Your two plans, in paise (smallest currency unit).
 const PLANS = {
-  basic: { amountPaise: 9900, label: 'Basic — ₹99/mo' },
-  pro: { amountPaise: 29900, label: 'Pro — ₹299/mo' },
+  basic: { amountPaise: 9900, label: 'Basic - Rs. 99/mo' },
+  pro: { amountPaise: 29900, label: 'Pro - Rs. 299/mo' },
 };
 
 export default async function handler(req, res) {
@@ -33,3 +32,15 @@ export default async function handler(req, res) {
     });
 
     return res.status(200).json({
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      keyId: process.env.RAZORPAY_KEY_ID,
+      plan,
+      planLabel: selected.label,
+    });
+  } catch (err) {
+    console.error('create-order failed:', err);
+    return res.status(500).json({ error: err.message || 'Could not start checkout.' });
+  }
+}
