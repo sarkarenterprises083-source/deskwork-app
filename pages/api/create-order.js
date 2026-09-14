@@ -33,13 +33,3 @@ export default async function handler(req, res) {
     });
 
     return res.status(200).json({
-      orderId: order.id,
-      amount: order.amount,
-      currency: order.currency,
-      keyId: process.env.RAZORPAY_KEY_ID,
-      plan,
-      planLabel: selected.label,
-    });
-  } catch (err) {
-    return res.status(500).json({ error: err.message || 'Could not start checkout.' });
-  }
