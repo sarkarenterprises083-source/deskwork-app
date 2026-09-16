@@ -303,3 +303,38 @@ table.extract th{
   gap: 8px;
   flex-wrap: wrap;
 }
+
+/* Tricolor accent theme (Option A) */
+.wrap {
+  position: relative;
+}
+.wrap::before {
+  content: "";
+  display: block;
+  height: 4px;
+  width: 100%;
+  background: linear-gradient(
+    to right,
+    #E58A2B 0%, #E58A2B 33.33%,
+    #FFFFFF 33.33%, #FFFFFF 66.66%,
+    #3B8A3E 66.66%, #3B8A3E 100%
+  );
+  margin-bottom: 1.5rem;
+  border-radius: 2px;
+}
+
+.tab.active {
+  color: #A5541A;
+  border-bottom: 2px solid #E58A2B;
+}
+
+.stamp {
+  background: #3B8A3E !important;
+  color: #fff !important;
+  border-color: #3B8A3E !important;
+}
+
+.stamp:hover {
+  background: #2F6F31 !important;
+  border-color: #2F6F31 !important;
+}
